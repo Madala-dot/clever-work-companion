@@ -6,6 +6,8 @@ import {
   Mail,
   NotebookPen,
   MessageSquare,
+  ListChecks,
+  BookOpen,
   Copy,
   Loader2,
   Send,
@@ -30,7 +32,13 @@ import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { generateEmail, summarizeNotes, chatReply } from "@/lib/ai.functions";
+import {
+  generateEmail,
+  summarizeNotes,
+  chatReply,
+  planTasks,
+  researchTopic,
+} from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,13 +47,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Draft emails, summarize meeting notes and chat with an AI workplace assistant in one clean, professional workspace.",
+          "Draft emails, summarize meeting notes, plan your day, research topics and chat with an AI workplace assistant in one clean, professional workspace.",
       },
       { property: "og:title", content: "AI Workplace Productivity Assistant" },
       {
         property: "og:description",
         content:
-          "Draft emails, summarize meeting notes and chat with an AI workplace assistant in one clean workspace.",
+          "Five AI tools for work: email drafting, meeting summaries, task planning, research briefs and an assistant chat.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -54,14 +62,73 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type Section = "dashboard" | "email" | "meetings" | "chat";
+type Section = "dashboard" | "email" | "meetings" | "planner" | "research" | "chat";
 
-const NAV: { id: Section; label: string; icon: typeof Mail }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "email", label: "Email", icon: Mail },
-  { id: "meetings", label: "Meetings", icon: NotebookPen },
-  { id: "chat", label: "Chat", icon: MessageSquare },
+const NAV: {
+  id: Section;
+  label: string;
+  icon: typeof Mail;
+  title: string;
+  blurb: string;
+  color: string;
+  tint: string;
+}[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    title: "Dashboard",
+    blurb: "Your workspace overview.",
+    color: "text-primary",
+    tint: "bg-primary/10",
+  },
+  {
+    id: "email",
+    label: "Email",
+    icon: Mail,
+    title: "Smart Email Generator",
+    blurb: "Pick a tone and topic — get a polished, editable draft.",
+    color: "text-tool-email",
+    tint: "bg-tool-email/10",
+  },
+  {
+    id: "meetings",
+    label: "Meetings",
+    icon: NotebookPen,
+    title: "Meeting Notes Summarizer",
+    blurb: "Extract summary, action items, decisions and deadlines.",
+    color: "text-tool-meeting",
+    tint: "bg-tool-meeting/10",
+  },
+  {
+    id: "planner",
+    label: "Task Planner",
+    icon: ListChecks,
+    title: "AI Task Planner",
+    blurb: "Turn a messy to-do list into a prioritised schedule.",
+    color: "text-tool-plan",
+    tint: "bg-tool-plan/10",
+  },
+  {
+    id: "research",
+    label: "Research",
+    icon: BookOpen,
+    title: "AI Research Assistant",
+    blurb: "Get a structured brief on any work topic.",
+    color: "text-tool-research",
+    tint: "bg-tool-research/10",
+  },
+  {
+    id: "chat",
+    label: "Chat",
+    icon: MessageSquare,
+    title: "Workplace Assistant Chat",
+    blurb: "Ask questions, plan work, and get quick guidance.",
+    color: "text-tool-chat",
+    tint: "bg-tool-chat/10",
+  },
 ];
+
 
 async function copy(text: string) {
   if (!text.trim()) {
@@ -115,7 +182,7 @@ function App() {
           </div>
           <nav className={cn("px-3 pb-4 md:block", navOpen ? "block" : "hidden")}>
             <ul className="space-y-1">
-              {NAV.map(({ id, label, icon: Icon }) => (
+              {NAV.map(({ id, label, icon: Icon, color }) => (
                 <li key={id}>
                   <button
                     onClick={() => {
@@ -130,7 +197,7 @@ function App() {
                     )}
                     aria-current={section === id ? "page" : undefined}
                   >
-                    <Icon className="size-4" />
+                    <Icon className={cn("size-4", color)} />
                     {label}
                   </button>
                 </li>
@@ -145,6 +212,8 @@ function App() {
             {section === "dashboard" && <Dashboard onGo={setSection} />}
             {section === "email" && <EmailGenerator />}
             {section === "meetings" && <MeetingSummarizer />}
+            {section === "planner" && <TaskPlanner />}
+            {section === "research" && <ResearchAssistant />}
             {section === "chat" && <Chatbot />}
           </main>
           <footer className="border-t border-border bg-card px-4 py-5 md:px-8">
@@ -176,41 +245,285 @@ function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
 function Dashboard({ onGo }: { onGo: (s: Section) => void }) {
   return (
     <div>
-      <PageHeader
-        title="AI Workplace Productivity Assistant"
-        subtitle="Draft emails, turn messy notes into decisions, and ask your assistant anything."
-      />
-      <div className="grid gap-4 sm:grid-cols-3">
-        {NAV.filter((n) => n.id !== "dashboard").map(({ id, label, icon: Icon }) => (
-          <Card key={id} className="shadow-none transition-shadow hover:shadow-md">
-            <CardHeader>
-              <Icon className="size-5 text-primary" />
-              <CardTitle className="text-base">
-                {id === "email"
-                  ? "Smart Email Generator"
-                  : id === "meetings"
-                    ? "Meeting Notes Summarizer"
-                    : "Workplace Assistant Chat"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {id === "email"
-                  ? "Pick a tone and topic — get a polished, editable draft."
-                  : id === "meetings"
-                    ? "Extract summary, action items, decisions and deadlines."
-                    : "Ask questions, plan work, and get quick guidance."}
-              </p>
-              <Button className="mt-4 w-full" variant="secondary" onClick={() => onGo(id)}>
-                Open {label}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+      <section
+        className="mb-8 rounded-2xl px-6 py-8 text-primary-foreground md:px-8 md:py-10"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-card)" }}
+      >
+        <Badge className="mb-3 border-0 bg-white/20 text-primary-foreground hover:bg-white/25">
+          Powered by Lovable AI
+        </Badge>
+        <h1 className="text-2xl font-semibold tracking-tight md:text-4xl">
+          AI Workplace Productivity Assistant
+        </h1>
+        <p className="mt-2 max-w-xl text-sm/relaxed opacity-90 md:text-base">
+          Five AI tools in one workspace: write emails, summarise meetings, plan your day, research
+          any topic and chat with your assistant.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => onGo("email")}
+            className="border-0 bg-white/95 text-primary hover:bg-white"
+          >
+            <Sparkles className="size-4" /> Draft an email
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onGo("planner")}
+            className="border-white/40 bg-transparent text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
+          >
+            <ListChecks className="size-4" /> Plan my day
+          </Button>
+        </div>
+      </section>
+
+      <h2 className="mb-4 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+        Your AI tools
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {NAV.filter((n) => n.id !== "dashboard").map(
+          ({ id, label, icon: Icon, title, blurb, color, tint }) => (
+            <Card key={id} className="shadow-none transition-shadow hover:shadow-md">
+              <CardHeader>
+                <div
+                  className={cn(
+                    "flex size-10 items-center justify-center rounded-lg",
+                    tint,
+                  )}
+                >
+                  <Icon className={cn("size-5", color)} />
+                </div>
+                <CardTitle className="text-base">{title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{blurb}</p>
+                <Button className="mt-4 w-full" variant="secondary" onClick={() => onGo(id)}>
+                  Open {label}
+                </Button>
+              </CardContent>
+            </Card>
+          ),
+        )}
       </div>
     </div>
   );
 }
+
+function TaskPlanner() {
+  const run = useServerFn(planTasks);
+  const [tasks, setTasks] = useState("");
+  const [hours, setHours] = useState("");
+  const [style, setStyle] = useState<"Balanced" | "Deep focus" | "Meeting heavy">("Balanced");
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const items = useMemo(
+    () =>
+      output
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => /^PRIORITY/i.test(l)),
+    [output],
+  );
+  const tip = useMemo(
+    () => output.split("\n").find((l) => /^TIP:/i.test(l.trim())) ?? "",
+    [output],
+  );
+
+  async function onPlan() {
+    if (!tasks.trim()) {
+      toast.error("List a few tasks first.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await run({ data: { tasks, hours, style } });
+      setOutput(res.text);
+      if (res.mock) toast.info("Mock response (no AI key configured).");
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="AI Task Planner"
+        subtitle="Paste your to-do list — get a prioritised, time-blocked plan."
+      />
+      <Card>
+        <CardContent className="grid gap-4 pt-6">
+          <div className="grid gap-2">
+            <Label htmlFor="tasks">Tasks (one per line)</Label>
+            <Textarea
+              id="tasks"
+              rows={7}
+              placeholder={"Finish client proposal\nReview team metrics\nReply to emails"}
+              value={tasks}
+              onChange={(e) => setTasks(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="hours">Available hours</Label>
+              <Input
+                id="hours"
+                placeholder="09:00–17:00"
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="style">Working style</Label>
+              <Select value={style} onValueChange={(v) => setStyle(v as typeof style)}>
+                <SelectTrigger id="style">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Balanced">Balanced</SelectItem>
+                  <SelectItem value="Deep focus">Deep focus</SelectItem>
+                  <SelectItem value="Meeting heavy">Meeting heavy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button onClick={onPlan} disabled={loading} className="sm:w-fit">
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <ListChecks className="size-4" />
+            )}
+            {loading ? "Planning…" : "Build my plan"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {output && (
+        <>
+          {items.length > 0 && (
+            <div className="mt-4 grid gap-3">
+              {items.map((line, i) => (
+                <Card key={i} className="border-l-4 border-l-tool-plan shadow-none">
+                  <CardContent className="flex items-start gap-3 py-4">
+                    <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-tool-plan/15 text-xs font-semibold text-tool-plan">
+                      {i + 1}
+                    </span>
+                    <p className="text-sm">{line.replace(/^PRIORITY\s*\d+\s*[—-]\s*/i, "")}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {tip && (
+            <p className="mt-3 rounded-lg bg-accent px-4 py-3 text-sm text-accent-foreground">
+              {tip}
+            </p>
+          )}
+          <Card className="mt-4">
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle className="text-base">Plan (editable)</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => copy(output)}>
+                <Copy className="size-4" /> Copy
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Textarea rows={10} value={output} onChange={(e) => setOutput(e.target.value)} />
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ResearchAssistant() {
+  const run = useServerFn(researchTopic);
+  const [topic, setTopic] = useState("");
+  const [depth, setDepth] = useState<"Quick brief" | "Standard" | "In depth">("Standard");
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function onResearch() {
+    if (!topic.trim()) {
+      toast.error("Enter a topic to research.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await run({ data: { topic, depth } });
+      setOutput(res.text);
+      if (res.mock) toast.info("Mock response (no AI key configured).");
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="AI Research Assistant"
+        subtitle="Get a structured brief on any work topic — then verify before sharing."
+      />
+      <Card>
+        <CardContent className="grid gap-4 pt-6">
+          <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
+            <div className="grid gap-2">
+              <Label htmlFor="rtopic">Topic or question</Label>
+              <Input
+                id="rtopic"
+                placeholder="How do teams measure onboarding success?"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="depth">Depth</Label>
+              <Select value={depth} onValueChange={(v) => setDepth(v as typeof depth)}>
+                <SelectTrigger id="depth">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Quick brief">Quick brief</SelectItem>
+                  <SelectItem value="Standard">Standard</SelectItem>
+                  <SelectItem value="In depth">In depth</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button onClick={onResearch} disabled={loading} className="sm:w-fit">
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <BookOpen className="size-4" />}
+            {loading ? "Researching…" : "Research topic"}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            AI research can be incomplete or outdated — always confirm facts with a primary source.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4 border-l-4 border-l-tool-research">
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Research brief (editable)</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => copy(output)}>
+            <Copy className="size-4" /> Copy
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            rows={14}
+            value={output}
+            onChange={(e) => setOutput(e.target.value)}
+            placeholder="Your research brief will appear here — fully editable."
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 
 function EmailGenerator() {
   const run = useServerFn(generateEmail);
