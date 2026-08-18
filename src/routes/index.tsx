@@ -64,7 +64,10 @@ const NAV: { id: Section; label: string; icon: typeof Mail }[] = [
 ];
 
 async function copy(text: string) {
-  if (!text.trim()) return toast.error("Nothing to copy yet.");
+  if (!text.trim()) {
+    toast.error("Nothing to copy yet.");
+    return;
+  }
   try {
     await navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
@@ -218,7 +221,10 @@ function EmailGenerator() {
   const [loading, setLoading] = useState(false);
 
   async function onGenerate() {
-    if (!topic.trim()) return toast.error("Add a topic first.");
+    if (!topic.trim()) {
+      toast.error("Add a topic first.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await run({ data: { recipient, topic, tone } });
@@ -336,7 +342,10 @@ function MeetingSummarizer() {
   const parsed = useMemo(() => (raw ? parseSummary(raw) : null), [raw]);
 
   async function onSummarize() {
-    if (!notes.trim()) return toast.error("Paste some meeting notes first.");
+    if (!notes.trim()) {
+      toast.error("Paste some meeting notes first.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await run({ data: { notes } });
