@@ -52,8 +52,81 @@ function mockFor(messages: Msg[]): string {
   if (last.includes("Write a workplace email")) {
     return "Subject: Following up\n\nHello,\n\nI hope this message finds you well. I wanted to follow up on the topic below and share a short update, along with next steps for your review.\n\nPlease let me know if you'd like any changes.\n\nBest regards,\n[Your name]\n\n(Mock response — no AI key configured.)";
   }
+  if (last.includes("TASKS TO PLAN")) {
+    return [
+      "PRIORITY 1 — Finish the client proposal · Est. 90 min · Today 09:00–10:30 · Why: hard deadline and highest impact",
+      "PRIORITY 2 — Review team metrics · Est. 45 min · Today 11:00–11:45 · Why: needed before tomorrow's stand-up",
+      "PRIORITY 3 — Reply to outstanding emails · Est. 30 min · Today 14:00–14:30 · Why: unblocks other people",
+      "PRIORITY 4 — Update project documentation · Est. 60 min · Tomorrow 09:00–10:00 · Why: important but not urgent",
+      "TIP: Protect the first 90 minutes for deep work and batch all email into one slot.",
+      "(Mock response — no AI key configured.)",
+    ].join("\n");
+  }
+  if (last.includes("RESEARCH TOPIC")) {
+    return [
+      "OVERVIEW: A concise orientation to the topic, what it covers and why it matters at work right now.",
+      "KEY POINTS:",
+      "- The core idea and the problem it solves",
+      "- The main approaches used in practice today",
+      "- Common pitfalls teams run into",
+      "PRACTICAL TAKEAWAYS:",
+      "- Start small with one measurable pilot",
+      "- Document assumptions so results can be reviewed",
+      "NEXT STEPS:",
+      "- Verify these points against a primary source before sharing",
+      "(Mock response — no AI key configured.)",
+    ].join("\n");
+  }
   return "Thanks for your message! I'm the Workplace Assistant running in mock mode. Ask me about drafting emails, planning meetings, or organising your day.";
 }
+
+export const planTasks = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        tasks: z.string().min(1),
+        hours: z.string(),
+        style: z.enum(["Balanced", "Deep focus", "Meeting heavy"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    return callAI([
+      {
+        role: "system",
+        content:
+          "You are an expert workplace task planner. Prioritise tasks by impact and urgency and build a realistic schedule. Reply in plain text, one item per line, formatted exactly as: 'PRIORITY <n> — <task> · Est. <minutes> min · <when> · Why: <one short reason>'. After the list add a single line starting with 'TIP: '. No other commentary.",
+      },
+      {
+        role: "user",
+        content: `TASKS TO PLAN:\n${data.tasks}\n\nAvailable working hours today: ${data.hours || "unspecified"}\nPreferred working style: ${data.style}`,
+      },
+    ]);
+  });
+
+export const researchTopic = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        topic: z.string().min(1),
+        depth: z.enum(["Quick brief", "Standard", "In depth"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    return callAI([
+      {
+        role: "system",
+        content:
+          "You are a careful workplace research assistant. Reply in plain text using exactly these uppercase headings on their own lines: OVERVIEW:, KEY POINTS:, PRACTICAL TAKEAWAYS:, NEXT STEPS:. Use '- ' bullets under the list headings. Be factual, flag uncertainty explicitly, and never invent statistics, citations or sources.",
+      },
+      {
+        role: "user",
+        content: `RESEARCH TOPIC: ${data.topic}\nDepth: ${data.depth}`,
+      },
+    ]);
+  });
+
 
 export const generateEmail = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
