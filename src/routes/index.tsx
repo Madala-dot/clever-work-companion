@@ -300,35 +300,33 @@ function EmailGenerator() {
 
 type Parsed = { summary: string; actions: string[]; decisions: string[]; deadlines: string[] };
 
+const HEADS = ["SUMMARY", "ACTION ITEMS", "DECISIONS", "DEADLINES"] as const;
+type Head = (typeof HEADS)[number];
+
 function parseSummary(text: string): Parsed {
-  const sections: Record<string, string[]> = {
-    SUMMARY: [],
-    "ACTION ITEMS": [],
-    DECISIONS: [],
-    DEADLINES: [],
-  };
-  let current = "SUMMARY";
+  const sections = new Map<Head, string[]>(HEADS.map((h) => [h, [] as string[]]));
+  let current: Head = "SUMMARY";
   for (const raw of text.split("\n")) {
     const line = raw.replace(/^[*#\s]+/, "").trim();
     if (!line) continue;
-    const head = Object.keys(sections).find((k) =>
-      line.toUpperCase().replace(/\*/g, "").startsWith(k + ":"),
-    );
+    const normalized = line.toUpperCase().replace(/\*/g, "");
+    const head = HEADS.find((k) => normalized.startsWith(k + ":"));
     if (head) {
       current = head;
       const rest = line.slice(line.indexOf(":") + 1).trim();
-      if (rest) sections[head].push(rest);
+      if (rest) sections.get(head)?.push(rest);
       continue;
     }
-    sections[current].push(line.replace(/^[-•]\s*/, ""));
+    sections.get(current)?.push(line.replace(/^[-•]\s*/, ""));
   }
   return {
-    summary: sections.SUMMARY.join(" "),
-    actions: sections["ACTION ITEMS"],
-    decisions: sections.DECISIONS,
-    deadlines: sections.DEADLINES,
+    summary: (sections.get("SUMMARY") ?? []).join(" "),
+    actions: sections.get("ACTION ITEMS") ?? [],
+    decisions: sections.get("DECISIONS") ?? [],
+    deadlines: sections.get("DEADLINES") ?? [],
   };
 }
+
 
 function MeetingSummarizer() {
   const run = useServerFn(summarizeNotes);
