@@ -6,6 +6,8 @@ import {
   Mail,
   NotebookPen,
   MessageSquare,
+  ListChecks,
+  BookOpen,
   Copy,
   Loader2,
   Send,
@@ -30,7 +32,13 @@ import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { generateEmail, summarizeNotes, chatReply } from "@/lib/ai.functions";
+import {
+  generateEmail,
+  summarizeNotes,
+  chatReply,
+  planTasks,
+  researchTopic,
+} from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,13 +47,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Draft emails, summarize meeting notes and chat with an AI workplace assistant in one clean, professional workspace.",
+          "Draft emails, summarize meeting notes, plan your day, research topics and chat with an AI workplace assistant in one clean, professional workspace.",
       },
       { property: "og:title", content: "AI Workplace Productivity Assistant" },
       {
         property: "og:description",
         content:
-          "Draft emails, summarize meeting notes and chat with an AI workplace assistant in one clean workspace.",
+          "Five AI tools for work: email drafting, meeting summaries, task planning, research briefs and an assistant chat.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -54,14 +62,73 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type Section = "dashboard" | "email" | "meetings" | "chat";
+type Section = "dashboard" | "email" | "meetings" | "planner" | "research" | "chat";
 
-const NAV: { id: Section; label: string; icon: typeof Mail }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "email", label: "Email", icon: Mail },
-  { id: "meetings", label: "Meetings", icon: NotebookPen },
-  { id: "chat", label: "Chat", icon: MessageSquare },
+const NAV: {
+  id: Section;
+  label: string;
+  icon: typeof Mail;
+  title: string;
+  blurb: string;
+  color: string;
+  tint: string;
+}[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    title: "Dashboard",
+    blurb: "Your workspace overview.",
+    color: "text-primary",
+    tint: "bg-primary/10",
+  },
+  {
+    id: "email",
+    label: "Email",
+    icon: Mail,
+    title: "Smart Email Generator",
+    blurb: "Pick a tone and topic — get a polished, editable draft.",
+    color: "text-tool-email",
+    tint: "bg-tool-email/10",
+  },
+  {
+    id: "meetings",
+    label: "Meetings",
+    icon: NotebookPen,
+    title: "Meeting Notes Summarizer",
+    blurb: "Extract summary, action items, decisions and deadlines.",
+    color: "text-tool-meeting",
+    tint: "bg-tool-meeting/10",
+  },
+  {
+    id: "planner",
+    label: "Task Planner",
+    icon: ListChecks,
+    title: "AI Task Planner",
+    blurb: "Turn a messy to-do list into a prioritised schedule.",
+    color: "text-tool-plan",
+    tint: "bg-tool-plan/10",
+  },
+  {
+    id: "research",
+    label: "Research",
+    icon: BookOpen,
+    title: "AI Research Assistant",
+    blurb: "Get a structured brief on any work topic.",
+    color: "text-tool-research",
+    tint: "bg-tool-research/10",
+  },
+  {
+    id: "chat",
+    label: "Chat",
+    icon: MessageSquare,
+    title: "Workplace Assistant Chat",
+    blurb: "Ask questions, plan work, and get quick guidance.",
+    color: "text-tool-chat",
+    tint: "bg-tool-chat/10",
+  },
 ];
+
 
 async function copy(text: string) {
   if (!text.trim()) {
